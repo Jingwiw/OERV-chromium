@@ -1,0 +1,49 @@
+Index: chromium-100.0.4896.75/v8/src/builtins/riscv64/builtins-riscv64.cc
+===================================================================
+--- chromium-100.0.4896.75.orig/v8/src/builtins/riscv64/builtins-riscv64.cc
++++ chromium-100.0.4896.75/v8/src/builtins/riscv64/builtins-riscv64.cc
+@@ -1475,27 +1475,8 @@ void Builtins::Generate_InterpreterEntry
+   __ Branch(&after_stack_check_interrupt);
+ 
+   __ bind(&has_optimized_code_or_marker);
+-  Label maybe_has_optimized_code;
+-  // Check if optimized code marker is available
+-  __ And(scratch, optimization_state,
+-         FeedbackVector::OptimizationTierBits::kMask);
+-  __ Branch(&maybe_has_optimized_code, ne, scratch, Operand(zero_reg),
+-            Label::Distance::kNear);
+-
+-  Register optimization_marker = optimization_state;
+-  __ DecodeField<FeedbackVector::OptimizationMarkerBits>(optimization_marker);
+-  MaybeOptimizeCode(masm, feedback_vector, optimization_marker);
+-  // Fall through if there's no runnable optimized code.
+-  __ Branch(&not_optimized);
+-
+-  __ bind(&maybe_has_optimized_code);
+-  Register optimized_code_entry = optimization_state;
+-  __ LoadAnyTaggedField(
+-      optimization_marker,
+-      FieldMemOperand(feedback_vector,
+-                      FeedbackVector::kMaybeOptimizedCodeOffset));
+-
+-  TailCallOptimizedCodeSlot(masm, optimized_code_entry, t4, a5);
++  MaybeOptimizeCodeOrTailCallOptimizedCodeSlot(masm, optimization_state,
++                                               feedback_vector);
+   __ bind(&is_baseline);
+   {
+     // Load the feedback vector from the closure.
+Index: chromium-100.0.4896.75/v8/src/regexp/riscv64/regexp-macro-assembler-riscv64.cc
+===================================================================
+--- chromium-100.0.4896.75.orig/v8/src/regexp/riscv64/regexp-macro-assembler-riscv64.cc
++++ chromium-100.0.4896.75/v8/src/regexp/riscv64/regexp-macro-assembler-riscv64.cc
+@@ -899,8 +899,8 @@ Handle<HeapObject> RegExpMacroAssemblerR
+           __ Branch(&load_char_start_regexp, ne, current_input_offset(),
+                     Operand(s3));
+           // Offset from the end is zero if we already reached the end.
+-          __ BranchShort(&exit_label_, eq, current_input_offset(),
+-                         Operand(zero_reg));
++          __ Branch(&exit_label_, eq, current_input_offset(),
++		    Operand(zero_reg));
+           // Advance current position after a zero-length match.
+           Label advance;
+           __ bind(&advance);
